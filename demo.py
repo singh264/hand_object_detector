@@ -22,6 +22,8 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F 
 from PIL import Image
+import json
+import pickle
 
 import torchvision.transforms as transforms
 import torchvision.datasets as dset
@@ -148,6 +150,71 @@ def _get_image_blob(im):
   blob = im_list_to_blob(processed_ims)
 
   return blob, np.array(im_scale_factors)
+
+def _json_ready_detections(detections):
+  """ Convert NumPy-backed detections into JSON-safe data. """
+  if detections is None:
+    return []
+
+  return detections.tolist()
+
+def save_structured_predictions(
+  save_dir,
+  image_filename,
+  hand_dets,
+  obj_dets,
+  thresh_hand,
+  thresh_obj,
+):
+  """ Write portable JSON and raw pickle outputs for one image. """
+  os.makedirs(save_dir, exist_ok = True)
+  
+  image_stem, _ = os.path.splitext(image_filename)
+  
+  json_path = os.path.join(
+    save_dir,
+    image_stem + "_shan.json",
+  )
+  
+  pickle_path = os.path.join(
+    save_dir,
+    image_stem + "_shan.pkl",
+  )
+  
+  json_payload = {
+    "image_name": image_filename,
+    "hands": _json_ready_detections(hand_dets),
+    "objects": _json_ready_detections(obj_dets),
+    "thresholds": {
+      "hand": float(thresh_hand),
+      "object": float(thresh_obj),
+    },
+  }
+  
+  pickle_payload = {
+    "image_name": image_filename,
+    "hands": hand_dets,
+    "objects": obj_dets,
+    "thresholds": {
+      "hand": thresh_hand,
+      "object": thresh_obj,
+    },
+  }
+  
+  with open(json_path, "w", encoding = "utf-8") as json_file:
+    json.dump(
+      json_payload,
+      json_file,
+      indent = 2,
+      sort_keys = True,
+    )
+  
+  with open(pickle_path, "wb") as pickle_file:
+    pickle.dump(
+      pickle_payload,
+      pickle_file,
+      protocol = pickle.HIGHEST_PROTOCOL,
+    )
 
 if __name__ == '__main__':
 
@@ -380,11 +447,29 @@ if __name__ == '__main__':
                             .format(num_images + 1, len(imglist), detect_time, nms_time))
             sys.stdout.flush()
 
-        if vis and webcam_num == -1:
+        if webcam_num == -1:
+          folder_name = args.save_dir
+          os.makedirs(folder_name, exist_ok = True)
+          
+          image_filename = imglist[num_images]
+          
+          save_structured_predictions(
+            save_dir = folder_name,
+            image_filename = image_filename,
+            hand_dets = hand_dets,
+            obj_dets = obj_dets,
+            thresh_hand = thresh_hand,
+            thresh_obj = thresh_obj
+          )
+          
+          if vis:
+            image_stem, _ = os.path.splitext(image_filename)
             
-            folder_name = args.save_dir
-            os.makedirs(folder_name, exist_ok=True)
-            result_path = os.path.join(folder_name, imglist[num_images][:-4] + "_det.png")
+            result_path = os.path.join(
+              folder_name,
+              image_stem + "_det.png"
+            )
+            
             im2show.save(result_path)
         else:
             im2showRGB = cv2.cvtColor(im2show, cv2.COLOR_BGR2RGB)

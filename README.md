@@ -102,7 +102,7 @@ Since the repo is modified based on [faster-rcnn.pytorch](https://github.com/jwy
 <td align='center'>73.2</td>
 <td align='center'>47.6</td>
 <td align='center'>39.8</td>
-<td align="center"><a href="https://drive.google.com/open?id=1H2tWsZkS7tDF8q1-jdjx6V9XrK25EDbE">faster_rcnn_1_8_132028.pth</a></td>
+<td align="center"><a href="https://drive.google.com/file/d/1b_BkGgmYAe8VNbsFeljrSP7V1Jd8E82v">faster_rcnn_1_8_132028.pth</a></td>
 </tr>
 
 <tr>
