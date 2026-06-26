@@ -39,6 +39,7 @@ from model.utils.net_utils import save_net, load_net, vis_detections, vis_detect
 from model.utils.blob import im_list_to_blob
 from model.faster_rcnn.vgg16 import vgg16
 from model.faster_rcnn.resnet import resnet
+from egomodelkit_progress import emit_progress
 import pdb
 
 try:
@@ -307,13 +308,27 @@ if __name__ == '__main__':
     else:
       print(f'image dir = {args.image_dir}')
       print(f'save dir = {args.save_dir}')
-      imglist = os.listdir(args.image_dir)
+      
+      imglist = [
+        image_name
+        for image_name in sorted(os.listdir(args.image_dir))
+        if os.path.isfile(os.path.join(args.image_dir, image_name))
+      ]
+
       num_images = len(imglist)
+      
+      emit_progress(
+        "hand_object_images_discovered",
+        current = num_images,
+        total = num_images,
+      )
 
     print('Loaded Photo: {} images.'.format(num_images))
 
+    processed_images = 0
+    last_image_filename = None
 
-    while (num_images >= 0):
+    while (webcam_num >= 0 or num_images > 0):
         total_tic = time.time()
         if webcam_num == -1:
           num_images -= 1
@@ -452,6 +467,7 @@ if __name__ == '__main__':
           os.makedirs(folder_name, exist_ok = True)
           
           image_filename = imglist[num_images]
+          last_image_filename = image_filename
           
           save_structured_predictions(
             save_dir = folder_name,
@@ -471,6 +487,15 @@ if __name__ == '__main__':
             )
             
             im2show.save(result_path)
+            
+          processed_images += 1
+            
+          emit_progress(
+            "hand_object_image_processed",
+            current = processed_images,
+            total = len(imglist),
+            image = image_filename,
+          )
         else:
             im2showRGB = cv2.cvtColor(im2show, cv2.COLOR_BGR2RGB)
             cv2.imshow("frame", im2showRGB)
@@ -480,7 +505,15 @@ if __name__ == '__main__':
             print('Frame rate:', frame_rate)
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
-              
+
+    if webcam_num == -1:
+      emit_progress(
+          "hand_object_output_saved",
+          current = processed_images,
+          total = len(imglist),
+          image = last_image_filename,
+      )
+    
     if webcam_num >= 0:
         cap.release()
         cv2.destroyAllWindows()
